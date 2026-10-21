@@ -18,7 +18,6 @@ try {
 
 const PORT = Number(process.env.PORT || 3001);
 const API = new URL(process.env.API_URL || 'http://localhost:4000');
-const SECRET = process.env.INTERNAL_PROXY_SECRET || '';
 const DIST = path.join(root, 'dist');
 
 const TYPES = {
@@ -44,14 +43,9 @@ const SECURITY = {
 
 function proxy(req, res) {
   const headers = { ...req.headers, host: API.host };
-  // Only this server may vouch for the visitor's IP.
-  delete headers['x-internal-proxy'];
-  delete headers['x-client-ip'];
-  if (SECRET) {
-    headers['x-internal-proxy'] = SECRET;
-    const ip = req.socket.remoteAddress?.replace(/^::ffff:/, '');
-    if (ip) headers['x-client-ip'] = ip;
-  }
+  // Like the web app: pass on the visitor's address (set by the load balancer, or this connection's)
+  // so the API rate-limits each admin rather than this server.
+  headers['x-forwarded-for'] ??= req.socket.remoteAddress?.replace(/^::ffff:/, '');
   const client = API.protocol === 'https:' ? https : http;
   const upstream = client.request(
     { protocol: API.protocol, hostname: API.hostname, port: API.port || undefined, method: req.method, path: req.url, headers, timeout: 30_000 },
