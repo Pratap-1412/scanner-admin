@@ -1,13 +1,15 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api } from './api';
-import type { UserRole, UserStatus } from './types';
+import type { AdminPermission, UserStatus } from './types';
 
 export type AdminUser = {
   id: string;
   name: string;
   email: string;
-  role: UserRole;
+  phone: string;
   status: UserStatus;
+  /** The account's admin role, or null for store owners and staff. */
+  adminRole: { id: string; name: string; system: boolean } | null;
   createdAt: string;
   approvedAt: string | null;
   lastLoginAt: string | null;
@@ -28,7 +30,7 @@ export type AdminTicket = {
   updatedAt: string;
   resolvedAt: string | null;
   resolvedBy: string | null;
-  user: { id: string; name: string; status: UserStatus } | null;
+  user: { id: string; name: string; phone: string; status: UserStatus } | null;
 };
 
 export type AdminStore = {
@@ -38,10 +40,24 @@ export type AdminStore = {
   status: string;
   businessType: string;
   createdAt: string;
-  owner: { name: string; email: string } | null;
+  owner: { id: string; name: string; email: string; phone: string } | null;
 };
 
-export type AdminSummary = { pending: number; active: number; openTickets: number; stores: number; liveStores: number };
+export type AdminRole = {
+  id: string;
+  key: string;
+  name: string;
+  description: string;
+  system: boolean;
+  permissions: AdminPermission[];
+  userCount: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type PermissionGroup = { group: string; permissions: { key: AdminPermission; label: string }[] };
+
+export type AdminSummary = { pending: number; active: number; openTickets: number; stores: number; liveStores: number; admins: number };
 
 export type Paged<K extends string, T> = { [key in K]: T[] } & { total: number; page: number; pageSize: number };
 

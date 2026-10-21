@@ -38,6 +38,13 @@ export function RequestRow({ user, onDone }: { user: AdminUser; onDone: () => vo
       <div className="min-w-0 flex-1">
         <p className="truncate font-semibold">{user.name}</p>
         <p className="truncate text-[15px] text-ink-2">{user.email}</p>
+        {user.phone && (
+          <p className="num truncate text-[15px] text-ink-2">
+            <a href={`tel:${user.phone.replace(/[^\d+]/g, '')}`} className="underline underline-offset-4">
+              {user.phone}
+            </a>
+          </p>
+        )}
         <p className="mt-0.5 text-sm text-ink-3">
           Asked {timeAgo(user.createdAt)}
           {user.status === 'rejected' && (
@@ -120,6 +127,9 @@ export function TicketRow({ ticket, onDone }: { ticket: AdminTicket; onDone: () 
         <div className="min-w-0 flex-1">
           <p className="truncate font-semibold">{ticket.user?.name ?? ticket.email}</p>
           <p className="truncate text-[15px] text-ink-2">{ticket.email}</p>
+          {ticket.user?.phone && ticket.user.phone !== ticket.contact && (
+            <p className="num truncate text-[15px] text-ink-2">Account phone: {ticket.user.phone}</p>
+          )}
           {ticket.contact && (
             <p className="mt-2 text-[15px]">
               <span className="text-ink-2">Reach them on: </span>

@@ -33,7 +33,7 @@ const TYPES = {
 
 const SECURITY = {
   'Content-Security-Policy':
-    "default-src 'self'; img-src 'self' data:; style-src 'self'; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'",
+    "default-src 'self'; img-src 'self' data: blob: https://res.cloudinary.com; style-src 'self'; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'",
   'X-Content-Type-Options': 'nosniff',
   'X-Frame-Options': 'DENY',
   'Referrer-Policy': 'same-origin',
@@ -70,7 +70,8 @@ function serveFile(res, file, cache) {
 
 const server = http.createServer((req, res) => {
   const url = new URL(req.url ?? '/', 'http://admin');
-  if (url.pathname.startsWith('/api/v1/')) return proxy(req, res);
+  // The API, and images uploaded to it in local mode.
+  if (url.pathname.startsWith('/api/v1/') || url.pathname.startsWith('/uploads/')) return proxy(req, res);
   if (req.method !== 'GET' && req.method !== 'HEAD') {
     res.writeHead(405, SECURITY);
     return res.end();

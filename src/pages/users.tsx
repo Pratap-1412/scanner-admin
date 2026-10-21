@@ -8,17 +8,21 @@ import { Button } from '@/components/ui/button';
 import { Select } from '@/components/ui/field';
 import { Skeleton } from '@/components/ui/skeleton';
 import { StatusPill } from '@/components/ui/status-pill';
-import { formatDate, qs, useResource, userStatus, type AdminUser, type Paged } from '@/lib/admin';
+import { formatDate, qs, useResource, userStatus, type AdminRole, type AdminUser, type Paged } from '@/lib/admin';
+import { useSearchParams } from '@/lib/router';
 import { useDebouncedValue } from '@/lib/use-debounced';
 
 export default function UsersPage() {
-  const { me, refreshSummary } = useAdmin();
+  const { me, can, refreshSummary } = useAdmin();
+  const roles = useResource<{ roles: AdminRole[] }>(can('users.manage') || can('roles.view') ? '/admin/roles' : null);
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
-  const [role, setRole] = useState('');
+  const params = useSearchParams();
+  const [role, setRole] = useState(() => params.get('role') ?? '');
   const [page, setPage] = useState(1);
   const q = useDebouncedValue(search.trim(), 300);
-  const list = useResource<Paged<'users', AdminUser>>(`/admin/users${qs({ q, status, role, page })}`);
+  const roleQuery = role === 'admins' ? { admins: 'true' } : role === 'users' ? { admins: 'false' } : { roleId: role };
+  const list = useResource<Paged<'users', AdminUser>>(`/admin/users${qs({ q, status, ...roleQuery, page })}`);
   const [adding, setAdding] = useState(false);
   const [managing, setManaging] = useState<AdminUser | null>(null);
 
@@ -33,15 +37,17 @@ export default function UsersPage() {
         title="Accounts"
         description="Everyone who can sign in, or has asked to."
         action={
-          <Button icon={<UserPlus size={18} strokeWidth={1.75} aria-hidden />} onClick={() => setAdding(true)}>
-            Add account
-          </Button>
+          can('users.manage') && (
+            <Button icon={<UserPlus size={18} strokeWidth={1.75} aria-hidden />} onClick={() => setAdding(true)}>
+              Add account
+            </Button>
+          )
         }
       />
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <SearchBox
-          label="Search name or email"
+          label="Search name, email or phone"
           value={search}
           onChange={(v) => {
             setSearch(v);
@@ -72,9 +78,14 @@ export default function UsersPage() {
           }}
           className="h-11 sm:w-44"
         >
-          <option value="">Any role</option>
-          <option value="superadmin">Super admins</option>
-          <option value="user">Store users</option>
+          <option value="">Anyone</option>
+          <option value="users">Store users</option>
+          <option value="admins">Any admin role</option>
+          {roles.data?.roles.map((r) => (
+            <option key={r.id} value={r.id}>
+              {r.name}
+            </option>
+          ))}
         </Select>
       </div>
 
@@ -110,11 +121,12 @@ export default function UsersPage() {
                           {u.id === me.id && <span className="ml-1.5 font-normal text-ink-3">(you)</span>}
                         </span>
                         <span className="block truncate text-ink-2">{u.email}</span>
+                        {u.phone && <span className="num block truncate text-sm text-ink-3">{u.phone}</span>}
                       </td>
                       <td className="px-3 py-3">
                         <StatusPill tone={userStatus[u.status].tone}>{userStatus[u.status].label}</StatusPill>
                       </td>
-                      <td className="px-3 py-3">{u.role === 'superadmin' ? 'Super admin' : 'Store user'}</td>
+                      <td className="px-3 py-3">{u.adminRole ? <span className="font-medium text-brand">{u.adminRole.name}</span> : 'Store user'}</td>
                       <td className="num px-3 py-3 text-right">{u.storeCount}</td>
                       <td className="px-3 py-3 text-ink-2">{u.lastLoginAt ? formatDate(u.lastLoginAt) : 'Never'}</td>
                       <td className="px-5 py-3 text-right">

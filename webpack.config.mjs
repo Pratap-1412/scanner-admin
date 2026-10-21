@@ -71,7 +71,7 @@ export default (_env, argv) => {
       historyApiFallback: true,
       hot: false,
       client: { overlay: { warnings: false } },
-      proxy: [{ context: ['/api/v1'], target: API_URL, changeOrigin: true }],
+      proxy: [{ context: ['/api/v1', '/uploads'], target: API_URL, changeOrigin: true }],
     },
     performance: { hints: false },
   };

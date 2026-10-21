@@ -11,7 +11,7 @@ import type { User } from '@/lib/types';
 import { useSubmit } from '@/lib/use-submit';
 
 /** Only panel pages are allowed as a post-login destination. */
-const safeNext = (next: string | null) => (next && /^\/(requests|tickets|users|stores)?$/.test(next) ? next : '/');
+const safeNext = (next: string | null) => (next && /^\/(requests|tickets|users|roles|stores(\/[a-f\d]{24}(\/[a-z]+)?)?)?$/.test(next) ? next : '/');
 
 export function LoginPage() {
   const router = useRouter();
@@ -23,7 +23,7 @@ export function LoginPage() {
   useEffect(() => {
     api<{ user: User }>('/auth/me', { retry: false })
       .then(({ user }) => {
-        if (user.role === 'superadmin') router.replace(next);
+        if (user.isAdmin) router.replace(next);
       })
       .catch(() => undefined);
   }, [next, router]);
@@ -33,10 +33,10 @@ export function LoginPage() {
     const body = Object.fromEntries(new FormData(e.currentTarget)) as Record<string, string>;
     const res = await run(() => api<{ user: User }>('/auth/login', { body }));
     if (!res) return;
-    if (res.user.role !== 'superadmin') {
+    if (!res.user.isAdmin) {
       // A store owner's password is right, but this panel isn't theirs. Don't leave them signed in here.
       await api('/auth/logout', { method: 'POST' }).catch(() => undefined);
-      setFormError('This account isn’t a super admin. Store owners sign in on the main site.');
+      setFormError('This account doesn’t have an admin role. Store owners sign in on the main site.');
       return;
     }
     router.replace(next);

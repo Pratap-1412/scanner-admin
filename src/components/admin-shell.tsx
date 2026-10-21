@@ -1,4 +1,4 @@
-import { ArrowLeft, ClipboardCheck, KeyRound, LayoutList, LogOut, Store, UsersRound } from 'lucide-react';
+import { ArrowLeft, ClipboardCheck, KeyRound, LayoutList, LogOut, ShieldCheck, Store, UsersRound } from 'lucide-react';
 import { createContext, useContext, useEffect, type ReactNode } from 'react';
 import { Wordmark } from '@/components/ui/brand';
 import { buttonClass } from '@/components/ui/button';
@@ -8,12 +8,19 @@ import { api, isApiError } from '@/lib/api';
 import { cn } from '@/lib/cn';
 import { Link, usePathname, useRouter } from '@/lib/router';
 import { WEB_URL } from '@/lib/site';
-import type { User } from '@/lib/types';
+import type { AdminMe, AdminPermission, User } from '@/lib/types';
 
-type AdminCtx = { me: User; summary: AdminSummary | undefined; refreshSummary: () => void };
+type AdminCtx = {
+  me: User;
+  role: AdminMe['role'];
+  /** Whether the admin's role allows this. Pages and buttons show only what it does. */
+  can: (perm: AdminPermission) => boolean;
+  summary: AdminSummary | undefined;
+  refreshSummary: () => void;
+};
 const AdminContext = createContext<AdminCtx | null>(null);
 
-/** The signed-in super admin and the panel's live counts. */
+/** The signed-in admin, their role and the panel's live counts. */
 export function useAdmin() {
   const ctx = useContext(AdminContext);
   if (!ctx) throw new Error('useAdmin must be used inside AdminShell');
@@ -24,7 +31,8 @@ export function AdminShell({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const me = useResource<{ user: User }>('/auth/me');
-  const isAdmin = me.data?.user.role === 'superadmin';
+  const isAdmin = Boolean(me.data?.user.isAdmin);
+  const access = useResource<AdminMe>(isAdmin ? '/admin/me' : null);
   const summary = useResource<AdminSummary>(isAdmin ? '/admin/summary' : null);
   const reloadSummary = summary.reload;
 
@@ -42,10 +50,10 @@ export function AdminShell({ children }: { children: ReactNode }) {
     router.replace('/login');
   }
 
-  if (!me.data) {
+  if (!me.data || (isAdmin && !access.data)) {
     return (
       <div className="mx-auto w-full max-w-5xl px-4 py-10 sm:px-8" aria-busy>
-        {me.error && !(isApiError(me.error) && me.error.status === 401) ? (
+        {(me.error && !(isApiError(me.error) && me.error.status === 401)) || access.error ? (
           <p role="alert" className="text-danger">
             We couldn’t reach the server. Check your connection and reload the page.
           </p>
@@ -65,7 +73,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
         <Wordmark href="/" />
         <h1 className="display mt-10 text-[34px]">This area is for admins</h1>
         <p className="mt-3 text-ink-2">
-          You’re signed in as <span className="font-semibold text-ink">{me.data.user.email}</span>, which isn’t a super admin account.
+          You’re signed in as <span className="font-semibold text-ink">{me.data.user.email}</span>, which doesn’t have an admin role.
         </p>
         <div className="mt-8 flex flex-wrap gap-3">
           <a href={`${WEB_URL}/dashboard`} className={buttonClass({})}>
@@ -80,17 +88,20 @@ export function AdminShell({ children }: { children: ReactNode }) {
   }
 
   const counts = summary.data;
+  const permissions = new Set(access.data!.permissions);
+  const can = (perm: AdminPermission) => permissions.has(perm);
   const nav = [
     { href: '/', label: 'Overview', icon: LayoutList, exact: true },
-    { href: '/requests', label: 'Sign-up requests', short: 'Requests', icon: ClipboardCheck, badge: counts?.pending },
-    { href: '/tickets', label: 'Password resets', short: 'Resets', icon: KeyRound, badge: counts?.openTickets },
-    { href: '/users', label: 'Accounts', icon: UsersRound },
-    { href: '/stores', label: 'Stores', icon: Store },
-  ];
+    can('users.approve') && { href: '/requests', label: 'Sign-up requests', short: 'Requests', icon: ClipboardCheck, badge: counts?.pending },
+    can('tickets.manage') && { href: '/tickets', label: 'Password resets', short: 'Resets', icon: KeyRound, badge: counts?.openTickets },
+    can('users.view') && { href: '/users', label: 'Accounts', icon: UsersRound },
+    can('stores.view') && { href: '/stores', label: 'Stores', icon: Store },
+    can('roles.view') && { href: '/roles', label: 'Roles', icon: ShieldCheck },
+  ].filter((n) => n !== false);
   const isActive = (href: string, exact?: boolean) => (exact ? pathname === href : pathname.startsWith(href));
 
   return (
-    <AdminContext.Provider value={{ me: me.data.user, summary: counts, refreshSummary: summary.reload }}>
+    <AdminContext.Provider value={{ me: me.data.user, role: access.data!.role, can, summary: counts, refreshSummary: summary.reload }}>
       <div className="flex flex-1 flex-col md:flex-row">
         <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 flex-col border-r border-line bg-paper-deep px-3 py-4 md:flex">
           <div className="flex items-center gap-2 px-2">
@@ -125,6 +136,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
             <div className="px-3 py-2">
               <span className="block truncate text-[15px] font-semibold">{me.data.user.name}</span>
               <span className="block truncate text-[13px] text-ink-2">{me.data.user.email}</span>
+              <span className="mt-1 block truncate text-[13px] font-semibold text-brand">{access.data!.role.name}</span>
             </div>
             <a
               href={`${WEB_URL}/dashboard`}
@@ -175,5 +187,17 @@ export function AdminShell({ children }: { children: ReactNode }) {
         </main>
       </div>
     </AdminContext.Provider>
+  );
+}
+
+/** A page the admin's role doesn't allow. */
+export function RequirePermission({ perm, children }: { perm: AdminPermission; children: ReactNode }) {
+  const { can } = useAdmin();
+  if (can(perm)) return <>{children}</>;
+  return (
+    <div className="mx-auto w-full max-w-5xl px-4 py-10 sm:px-8">
+      <h1 className="display text-[32px]">Not available to your role</h1>
+      <p className="mt-2 text-ink-2">Your admin role doesn’t include this page. Ask a super admin if you need it.</p>
+    </div>
   );
 }
