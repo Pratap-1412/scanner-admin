@@ -1,0 +1,154 @@
+@import 'tailwindcss';
+@import '@fontsource/hanken-grotesk/400.css';
+@import '@fontsource/hanken-grotesk/500.css';
+@import '@fontsource/hanken-grotesk/600.css';
+@import '@fontsource/hanken-grotesk/700.css';
+@import '@fontsource/young-serif/400.css';
+@source '../public';
+
+/*
+  Same design tokens as the web app (web/app/globals.css, plan.md §0.5).
+  No gradients, no glow. Shadows only on floating layers.
+*/
+:root {
+  --paper: #f5f2ea;
+  --paper-deep: #ece7db;
+  --surface: #fffdf8;
+  --ink: #1d2622;
+  --ink-2: #4e5a55;
+  --ink-3: #5f6a65; /* ≥4.5:1 on paper and paper-deep */
+  --line: #e2ddd0;
+  --line-strong: #cfc8b8;
+
+  --brand: #0b6b70;
+  --brand-hover: #08575b;
+  --brand-press: #064549;
+  --brand-tint: #e1ede9;
+  --on-brand: #fffdf8;
+
+  --accent: #e8a93b;
+  --accent-tint: #f8e7c4;
+
+  --success: #1e7a4c;
+  --success-tint: #dcefe2;
+  --warning: #8a5a00;
+  --warning-tint: #f6e9c9;
+  --danger: #b3261e;
+  --danger-tint: #f7dfdc;
+
+  --shadow-float: 0 1px 2px rgb(29 38 34 / 0.08), 0 12px 32px -12px rgb(29 38 34 / 0.28);
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --font-hanken: 'Hanken Grotesk';
+  --font-young-serif: 'Young Serif';
+}
+
+@theme inline {
+  --color-paper: var(--paper);
+  --color-paper-deep: var(--paper-deep);
+  --color-surface: var(--surface);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-brand: var(--brand);
+  --color-brand-hover: var(--brand-hover);
+  --color-brand-press: var(--brand-press);
+  --color-brand-tint: var(--brand-tint);
+  --color-on-brand: var(--on-brand);
+  --color-accent: var(--accent);
+  --color-accent-tint: var(--accent-tint);
+  --color-success: var(--success);
+  --color-success-tint: var(--success-tint);
+  --color-warning: var(--warning);
+  --color-warning-tint: var(--warning-tint);
+  --color-danger: var(--danger);
+  --color-danger-tint: var(--danger-tint);
+
+  --font-sans: var(--font-hanken), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-young-serif), Georgia, serif;
+
+  --radius-input: 6px;
+  --radius-btn: 8px;
+  --radius-card: 12px;
+  --radius-photo: 4px;
+
+  --shadow-float: var(--shadow-float);
+  --ease-out: var(--ease-out);
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-rendering: optimizeLegibility;
+  }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    font-size: 16px;
+    line-height: 1.55;
+    font-feature-settings: 'ss01';
+  }
+  ::selection {
+    background: var(--accent-tint);
+    color: var(--ink);
+  }
+  :focus-visible {
+    outline: 2px solid var(--ink);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+  h1,
+  h2,
+  h3,
+  h4 {
+    text-wrap: balance;
+  }
+  p {
+    text-wrap: pretty;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@layer components {
+  /* Display type: Young Serif for headlines only, never under 28px. */
+  .display {
+    font-family: var(--font-display);
+    font-weight: 400;
+    letter-spacing: -0.01em;
+    line-height: 1.08;
+  }
+  .num {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@keyframes tick {
+  0%,
+  80%,
+  100% {
+    opacity: 0.25;
+  }
+  40% {
+    opacity: 1;
+  }
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
